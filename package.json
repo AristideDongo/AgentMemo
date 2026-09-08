@@ -1,0 +1,17 @@
+{
+  "name": "aihub",
+  "version": "0.1.0",
+  "description": "Mémoire locale pour passer d’un agent IA à un autre sans perdre le fil du projet.",
+  "type": "module",
+  "bin": { "aihub": "dist/cli.js" },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "dev": "node --experimental-strip-types src/cli.ts",
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  },
+  "engines": { "node": ">=22.6" },
+  "devDependencies": { "@types/node": "^24.3.0", "typescript": "^5.9.2" },
+  "license": "MIT"
+}

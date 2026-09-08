@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.aihub/
+*.log
+.DS_Store
