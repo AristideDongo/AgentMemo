@@ -11,7 +11,7 @@ export async function mutate(root: string, operation: (state: ProjectState) => v
   operation(state);
   await saveState(root, state);
   try { await updateAgentsFile(root, state); }
-  catch (error) { throw new Error(`État enregistré, mais contexte non régénéré. Lance aihub sync : ${(error as Error).message}`); }
+  catch (error) { throw new Error(`État enregistré, mais contexte non régénéré. Lance agentmemo sync : ${(error as Error).message}`); }
   return state;
   });
 }

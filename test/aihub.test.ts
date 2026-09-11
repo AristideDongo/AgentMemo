@@ -7,7 +7,7 @@ import { renderContext, updateAgentsFile } from '../src/agents.ts';
 import { initialize, loadState } from '../src/project.ts';
 import { addDecision, addHandoff, addTask, updateTask } from '../src/service.ts';
 
-async function project() { const root = await mkdtemp(join(tmpdir(), 'aihub-')); await initialize(root); return root; }
+async function project() { const root = await mkdtemp(join(tmpdir(), 'agentmemo-')); await initialize(root); return root; }
 
 test('initialise un état local vide', async () => {
   const root = await project(); const state = await loadState(root);

@@ -9,7 +9,7 @@ export function renderContext(state: ProjectState): string {
   const latest = state.handoffs.at(-1);
   const active = state.tasks.filter((task) => task.status !== 'done');
   const decisions = state.decisions.slice(-5);
-  const lines = [START, '## aihub — point de reprise', '', `> Mis à jour localement le ${state.updatedAt}.`];
+  const lines = [START, '## agentmemo — point de reprise', '', `> Mis à jour localement le ${state.updatedAt}.`];
   if (state.objective) lines.push('', '### Objectif', '', state.objective);
   if (latest) {
     lines.push('', '### Dernier relais', '', `**${latest.agent}** — ${latest.summary}`);
