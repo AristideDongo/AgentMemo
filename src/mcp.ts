@@ -35,9 +35,9 @@ function validateArguments(name: string, args: unknown): asserts args is Record<
   }
 }
 
-async function callTool(name: string, args: Record<string, unknown>) {
+async function callTool(name: string, args: Record<string, unknown>, projectRoot?: string) {
   validateArguments(name, args);
-  const root = await findProjectRoot();
+  const root = projectRoot ?? await findProjectRoot();
   if (name === 'aihub_context') return text(renderContext(await loadState(root)));
   if (name === 'aihub_task_add') return text(await addTask(root, String(args.title)));
   if (name === 'aihub_task_update') return text(await updateTask(root, String(args.id), args.status as 'todo' | 'doing' | 'done', args.note ? String(args.note) : undefined));
@@ -46,7 +46,7 @@ async function callTool(name: string, args: Record<string, unknown>) {
   throw new Error(`Outil MCP inconnu : ${name}`);
 }
 
-export async function handleMcpRequest(input: unknown) {
+export async function handleMcpRequest(input: unknown, projectRoot?: string) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return error(null, -32600, 'Requête invalide');
   const request = input as Request;
   if (request.jsonrpc !== '2.0' || typeof request.method !== 'string' ||
@@ -59,17 +59,17 @@ export async function handleMcpRequest(input: unknown) {
   if (request.method === 'tools/list') return result(request.id, { tools });
   if (request.method === 'tools/call') {
     try {
-      const params = request.params ?? {}; return result(request.id, await callTool(String(params.name), (params.arguments ?? {}) as Record<string, unknown>));
+      const params = request.params ?? {}; return result(request.id, await callTool(String(params.name), (params.arguments ?? {}) as Record<string, unknown>, projectRoot));
     } catch (cause) { return result(request.id, { ...text((cause as Error).message), isError: true }); }
   }
   return error(request.id, -32601, `Méthode inconnue : ${request.method}`);
 }
 
-export async function startMcpServer(): Promise<void> {
+export async function startMcpServer(projectRoot?: string): Promise<void> {
   const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
   for await (const line of lines) {
     if (!line.trim()) continue;
-    try { const response = await handleMcpRequest(JSON.parse(line) as Request); if (response) process.stdout.write(`${JSON.stringify(response)}\n`); }
+    try { const response = await handleMcpRequest(JSON.parse(line) as Request, projectRoot); if (response) process.stdout.write(`${JSON.stringify(response)}\n`); }
     catch { process.stdout.write(`${JSON.stringify(error(null, -32700, 'JSON invalide'))}\n`); }
   }
 }

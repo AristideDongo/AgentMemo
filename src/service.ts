@@ -1,3 +1,4 @@
+import { withProjectLock } from './lock.ts';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { removeAgentsContext, updateAgentsFile } from './agents.ts';
@@ -5,11 +6,14 @@ import { loadState, nextId, saveState, STATE_DIRECTORY } from './project.ts';
 import type { Decision, Handoff, ProjectState, Task, TaskStatus } from './types.ts';
 
 export async function mutate(root: string, operation: (state: ProjectState) => void): Promise<ProjectState> {
+  return withProjectLock(root, async () => {
   const state = await loadState(root);
   operation(state);
   await saveState(root, state);
-  await updateAgentsFile(root, state);
+  try { await updateAgentsFile(root, state); }
+  catch (error) { throw new Error(`État enregistré, mais contexte non régénéré. Lance aihub sync : ${(error as Error).message}`); }
   return state;
+  });
 }
 
 export async function setObjective(root: string, objective: string): Promise<ProjectState> {
@@ -57,6 +61,16 @@ export async function addHandoff(root: string, input: Omit<Handoff, 'id' | 'crea
 }
 
 export async function purge(root: string): Promise<void> {
+  await withProjectLock(root, async () => {
   await removeAgentsContext(root);
   await rm(join(root, STATE_DIRECTORY), { recursive: true, force: true });
+  });
+}
+
+export async function syncContext(root: string): Promise<ProjectState> {
+  return withProjectLock(root, async () => {
+    const state = await loadState(root);
+    await updateAgentsFile(root, state);
+    return state;
+  });
 }

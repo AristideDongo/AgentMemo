@@ -1,6 +1,14 @@
 # Audit développeurs — 11 septembre 2026
 
-## Diagnostic
+## Mise à jour après renforcement du CLI
+
+Le défaut de concurrence ci-dessous a été corrigé par un verrou de projet partagé par les processus locaux. Le test de régression conserve vingt tâches et vingt IDs distincts : dix ajouts concurrents dans un processus, puis dix processus CLI. Initialisation, purge et synchronisation prennent aussi ce verrou. Un arrêt brutal nécessite une récupération manuelle documentée dans le README.
+
+Le CLI utilise maintenant un parseur strict et propose `--project`, `--json`, `task reopen`, `task list --status`, `handoff list` et `sync`. La régénération peut être relancée après un échec ; les mutations signalent explicitement quand l'état a déjà été enregistré. Dix tests passent localement sous Node 24.21.0. La validation profonde du stockage, les marqueurs dans AGENTS.md et la compatibilité client MCP restent à traiter.
+
+Le diagnostic suivant conserve les observations initiales. Les lignes P0, récupération par sync et parseur CLI sont désormais traitées dans les limites décrites ci-dessus.
+
+## Diagnostic initial
 
 Le dépôt contient un MVP CLI TypeScript, un stockage JSON et un serveur MCP stdio. Aucun backend, compte, secret ou frontend n'est nécessaire au périmètre annoncé. Après installation des dépendances, les quatre tests initiaux, la vérification TypeScript et la compilation passent sous Node 24.21.0.
 

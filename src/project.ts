@@ -1,3 +1,6 @@
+import { withProjectLock } from './lock.ts';
+import { updateAgentsFile } from './agents.ts';
+import { randomUUID } from 'node:crypto';
 import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { ProjectState } from './types.ts';
@@ -36,19 +39,26 @@ export async function loadState(root: string): Promise<ProjectState> {
 export async function saveState(root: string, state: ProjectState): Promise<void> {
   const directory = join(root, STATE_DIRECTORY);
   const path = join(directory, STATE_FILE);
-  const temporary = `${path}.${process.pid}.tmp`;
+  const temporary = `${path}.${randomUUID()}.tmp`;
   await mkdir(directory, { recursive: true });
   state.updatedAt = new Date().toISOString();
   await writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
   await rename(temporary, path);
 }
 
-export async function initialize(root: string): Promise<ProjectState> {
-  try { return await loadState(root); }
-  catch (error) {
-    if (!(error as Error).message.startsWith('Projet non initialisé')) throw error;
-    const state = emptyState(root); await saveState(root, state); return state;
-  }
+export async function initialize(root: string, objective?: string): Promise<ProjectState> {
+  return withProjectLock(root, async () => {
+    let state: ProjectState;
+    try { state = await loadState(root); }
+    catch (error) {
+      if (!(error as Error).message.startsWith('Projet non initialisé')) throw error;
+      state = emptyState(root);
+    }
+    if (objective !== undefined) state.objective = objective;
+    await saveState(root, state);
+    await updateAgentsFile(root, state);
+    return state;
+  });
 }
 
 export function nextId(prefix: string, entries: Array<{ id: string }>): string {

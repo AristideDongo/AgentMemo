@@ -106,4 +106,21 @@ MIT
 
 ## Suivi développeurs
 
-Consulte [l'audit technique et les priorités](docs/AUDIT.md). L'usage séquentiel est testé ; les écritures simultanées de plusieurs sessions ne sont pas encore sécurisées et peuvent perdre des mises à jour.
+Consulte [l'audit technique et les priorités](docs/AUDIT.md). Les écritures locales sont sérialisées entre processus.
+
+
+## CLI pour les développeurs
+
+```bash
+aihub --project /chemin/du/projet init --objective "Préparer la prochaine version"
+aihub --project /chemin/du/projet task add "Tester le relais" --doing --json
+aihub task list --status doing --json
+aihub task reopen T1 --note "À reprendre"
+aihub handoff list --json
+aihub sync
+aihub task add -- "--titre commençant par un tiret"
+```
+
+`--project` cible exactement un dossier existant, depuis n'importe quel répertoire, y compris pour `mcp`. Sans cette option, la racine est détectée comme auparavant. `--json` renvoie les données structurées sur stdout ; les erreurs vont sur stderr avec un code de sortie non nul. Les options inconnues, incompatibles avec la commande ou répétées (hors `--file` et `--blocker`) sont rejetées.
+
+`sync` reconstruit le contexte depuis la mémoire enregistrée, sans modifier son contenu. Les mutations, l'initialisation, la synchronisation et la purge utilisent le dossier de verrou `.aihub.lock`, à ignorer dans Git. Après dix secondes d'attente, une commande échoue avec un diagnostic. Si un processus a été interrompu brutalement, vérifie qu'aucun processus aihub n'utilise ce projet avant de retirer ce dossier vide. Le verrou vise les processus locaux sur un système de fichiers local ; il ne constitue pas une synchronisation entre machines.
