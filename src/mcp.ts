@@ -17,7 +17,26 @@ function result(id: Request['id'], value: unknown) { return { jsonrpc: '2.0', id
 function error(id: Request['id'], code: number, message: string) { return { jsonrpc: '2.0', id, error: { code, message } }; }
 function text(value: unknown) { return { content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }] }; }
 
+function validateArguments(name: string, args: unknown): asserts args is Record<string, unknown> {
+  const tool = tools.find((tool) => tool.name === name);
+  if (!tool) throw new Error(`Outil MCP inconnu : ${name}`);
+  if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Arguments : objet attendu.');
+  const input = args as Record<string, unknown>;
+  const schema = tool.inputSchema as { properties: Record<string, { type: string; enum?: string[] } | undefined>; required?: string[] };
+  for (const key of schema.required ?? []) {
+    if (!(key in input)) throw new Error(`Argument requis : ${key}`);
+  }
+  for (const [key, value] of Object.entries(input)) {
+    const field = schema.properties[key];
+    if (!field) throw new Error(`Argument inconnu : ${key}`);
+    if (field.type === 'string' && (typeof value !== 'string' || !value.trim())) throw new Error(`${key} : chaîne non vide attendue.`);
+    if (field.type === 'array' && (!Array.isArray(value) || value.some((item) => typeof item !== 'string'))) throw new Error(`${key} : liste de chaînes attendue.`);
+    if (field.enum && !field.enum.includes(value as string)) throw new Error(`${key} : valeur invalide.`);
+  }
+}
+
 async function callTool(name: string, args: Record<string, unknown>) {
+  validateArguments(name, args);
   const root = await findProjectRoot();
   if (name === 'aihub_context') return text(renderContext(await loadState(root)));
   if (name === 'aihub_task_add') return text(await addTask(root, String(args.title)));
@@ -27,7 +46,13 @@ async function callTool(name: string, args: Record<string, unknown>) {
   throw new Error(`Outil MCP inconnu : ${name}`);
 }
 
-export async function handleMcpRequest(request: Request) {
+export async function handleMcpRequest(input: unknown) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return error(null, -32600, 'Requête invalide');
+  const request = input as Request;
+  if (request.jsonrpc !== '2.0' || typeof request.method !== 'string' ||
+      (request.id !== undefined && request.id !== null && typeof request.id !== 'string' && typeof request.id !== 'number')) return error(null, -32600, 'Requête invalide');
+  if (request.id === undefined) return undefined;
+  if (request.params !== undefined && (!request.params || typeof request.params !== 'object' || Array.isArray(request.params))) return error(request.id, -32602, 'Paramètres invalides');
   if (request.method === 'initialize') return result(request.id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'aihub', version: '0.1.0' } });
   if (request.method === 'notifications/initialized') return undefined;
   if (request.method === 'ping') return result(request.id, {});

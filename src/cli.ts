@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { readFile } from 'node:fs/promises';
 import { renderContext, updateAgentsFile } from './agents.ts';
 import { startMcpServer } from './mcp.ts';
 import { findProjectRoot, initialize, loadState } from './project.ts';
@@ -7,9 +6,22 @@ import { addDecision, addHandoff, addTask, purge, setObjective, updateTask } fro
 
 const [command = 'help', subcommand, ...args] = process.argv.slice(2);
 const optionArgs = [subcommand, ...args].filter((arg): arg is string => typeof arg === 'string');
-const value = (flag: string) => { const index = optionArgs.indexOf(flag); return index >= 0 ? optionArgs[index + 1] : undefined; };
-const positional = () => args.filter((arg, index) => !arg.startsWith('--') && (index === 0 || !args[index - 1]?.startsWith('--'))).join(' ').trim();
-const required = (input: string | undefined, usage: string) => { if (!input) throw new Error(`Valeur manquante. Usage : ${usage}`); return input; };
+const booleanFlags = new Set(['--doing', '--yes']);
+const value = (flag: string) => {
+  const index = optionArgs.indexOf(flag);
+  if (index < 0) return undefined;
+  return required(optionArgs[index + 1]?.startsWith('--') ? undefined : optionArgs[index + 1], `${flag} "valeur"`);
+};
+const positional = () => {
+  const result: string[] = [];
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index]!;
+    if (arg.startsWith('--')) { if (!booleanFlags.has(arg)) { value(arg); index++; } }
+    else result.push(arg);
+  }
+  return result.join(' ').trim();
+};
+const required = (input: string | undefined, usage: string) => { if (!input?.trim()) throw new Error(`Valeur manquante. Usage : ${usage}`); return input; };
 
 function help() {
   console.log(`aihub — mémoire locale entre agents IA
@@ -56,6 +68,6 @@ async function main() {
   throw new Error(`Commande inconnue : ${[command, subcommand].filter(Boolean).join(' ')}. Lance \`aihub help\`.`);
 }
 
-function values(flag: string): string[] { return optionArgs.flatMap((arg, index) => arg === flag && optionArgs[index + 1] ? [optionArgs[index + 1]!] : []); }
+function values(flag: string): string[] { return optionArgs.flatMap((arg, index) => arg === flag ? [required(optionArgs[index + 1]?.startsWith('--') ? undefined : optionArgs[index + 1], `${flag} valeur`)] : []); }
 
 main().catch((error: Error) => { console.error(`Erreur : ${error.message}`); process.exitCode = 1; });

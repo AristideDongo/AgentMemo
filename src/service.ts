@@ -1,6 +1,6 @@
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { updateAgentsFile } from './agents.ts';
+import { removeAgentsContext, updateAgentsFile } from './agents.ts';
 import { loadState, nextId, saveState, STATE_DIRECTORY } from './project.ts';
 import type { Decision, Handoff, ProjectState, Task, TaskStatus } from './types.ts';
 
@@ -57,5 +57,6 @@ export async function addHandoff(root: string, input: Omit<Handoff, 'id' | 'crea
 }
 
 export async function purge(root: string): Promise<void> {
+  await removeAgentsContext(root);
   await rm(join(root, STATE_DIRECTORY), { recursive: true, force: true });
 }

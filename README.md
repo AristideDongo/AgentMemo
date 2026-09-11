@@ -103,3 +103,7 @@ npm run check
 ## Licence
 
 MIT
+
+## Suivi développeurs
+
+Consulte [l'audit technique et les priorités](docs/AUDIT.md). L'usage séquentiel est testé ; les écritures simultanées de plusieurs sessions ne sont pas encore sécurisées et peuvent perdre des mises à jour.

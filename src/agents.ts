@@ -32,3 +32,15 @@ export async function updateAgentsFile(root: string, state: ProjectState): Promi
   const next = start >= 0 && end >= start ? `${current.slice(0, start)}${generated}${current.slice(end + END.length).replace(/^\n/, '')}` : `${current}${current && !current.endsWith('\n') ? '\n' : ''}${current ? '\n' : ''}${generated}`;
   await writeFile(path, next, 'utf8');
 }
+
+export async function removeAgentsContext(root: string): Promise<void> {
+  const path = join(root, 'AGENTS.md');
+  let current: string;
+  try { current = await readFile(path, 'utf8'); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
+  const start = current.indexOf(START);
+  const end = current.indexOf(END);
+  if (start >= 0 && end >= start) {
+    await writeFile(path, current.slice(0, start) + current.slice(end + END.length).replace(/^\n/, ''), 'utf8');
+  }
+}
