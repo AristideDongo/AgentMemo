@@ -1,3 +1,5 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { withProjectLock } from './lock.ts';
 import { updateAgentsFile } from './agents.ts';
 import { randomUUID } from 'node:crypto';
@@ -46,6 +48,24 @@ export async function saveState(root: string, state: ProjectState): Promise<void
   await rename(temporary, path);
 }
 
+async function ignoreLocalFiles(root: string): Promise<void> {
+  let tracked = '';
+  try {
+    tracked = (await promisify(execFile)('git', ['ls-files', '--', 'AGENTS.md', '.aihub', '.aihub.lock'], { cwd: root })).stdout;
+  } catch (error) {
+    // A project does not need Git installed or an initialized repository.
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !(error as { stderr?: string }).stderr?.includes('not a git repository')) throw error;
+  }
+  if (tracked.trim()) throw new Error('Des fichiers aihub ou AGENTS.md sont déjà suivis par Git. Retire-les du suivi avant init pour garder la mémoire locale. Aucun fichier suivi ne sera modifié.');
+  const path = join(root, '.gitignore');
+  let current = '';
+  try { current = await readFile(path, 'utf8'); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  const patterns = ['/.aihub/', '/.aihub.lock/', '/AGENTS.md'];
+  const missing = patterns.filter(pattern => !current.split(/\r?\n/).includes(pattern));
+  if (missing.length) await writeFile(path, `${current}${current && !current.endsWith('\n') ? '\n' : ''}${missing.join('\n')}\n`, 'utf8');
+}
+
 export async function initialize(root: string, objective?: string): Promise<ProjectState> {
   return withProjectLock(root, async () => {
     let state: ProjectState;
@@ -54,6 +74,7 @@ export async function initialize(root: string, objective?: string): Promise<Proj
       if (!(error as Error).message.startsWith('Projet non initialisé')) throw error;
       state = emptyState(root);
     }
+    await ignoreLocalFiles(root);
     if (objective !== undefined) state.objective = objective;
     await saveState(root, state);
     await updateAgentsFile(root, state);

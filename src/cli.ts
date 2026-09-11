@@ -1,6 +1,8 @@
 #!/usr/bin/env node
+import { interactive } from './interactive.ts';
 import { parseArgs } from 'node:util';
 import { realpath } from 'node:fs/promises';
+import { exit } from 'node:process';
 import { renderContext } from './agents.ts';
 import { startMcpServer } from './mcp.ts';
 import { findProjectRoot, initialize, loadState } from './project.ts';
@@ -9,6 +11,7 @@ import { addDecision, addHandoff, addTask, purge, setObjective, syncContext, upd
 const usage = `aihub — mémoire locale entre agents IA
 
 Usage : aihub [--project chemin] <commande> [--json]
+  interactive
   init [--objective "objectif"]
   status | context | sync
   objective "objectif"
@@ -38,13 +41,13 @@ async function main() {
       yes: { type: 'boolean' },
     },
   });
-  const [command = 'help', ...rest] = positionals;
+  const [command = process.stdin.isTTY && process.stdout.isTTY ? 'interactive' : 'help', ...rest] = positionals;
   if (values.help || command === 'help') { console.log(usage); return; }
   const grouped = ['task', 'decision'].includes(command) || (command === 'handoff' && rest[0] === 'list');
   const action = grouped ? rest.shift() : undefined;
   const key = [command, action].filter(Boolean).join(' ');
   const allowed: Record<string, string[]> = {
-    init: ['objective'], status: [], context: [], sync: [], objective: [],
+    interactive: [], init: ['objective'], status: [], context: [], sync: [], objective: [],
     'task add': ['doing'], 'task list': ['status'], 'task start': ['note'],
     'task done': ['note'], 'task reopen': ['note'],
     'decision add': ['reason'], 'decision list': [],
@@ -70,7 +73,12 @@ async function main() {
   if (takesText) required(rest.join(' '), 'texte');
   if (values.status && !['todo', 'doing', 'done'].includes(values.status)) throw new Error('Statut invalide : todo, doing ou done attendu.');
   if (command === 'mcp' && values.json) throw new Error('mcp utilise déjà JSON-RPC ; retire --json.');
-  const root = values.project ? await realpath(values.project) : await findProjectRoot();
+  const root = values.project ? await realpath(values.project) : command === 'init' ? await realpath(process.cwd()) : await findProjectRoot();
+  if (command === 'interactive') {
+    if (!process.stdin.isTTY || !process.stdout.isTTY || values.json) throw new Error('Le mode interactif nécessite un terminal, sans --json.');
+    return interactive(root);
+  }
+  if (command === 'init' && process.stdin.isTTY && process.stdout.isTTY && !values.json) return interactive(root, true, values.objective);
   const output = (data: unknown, message: string) => console.log(values.json ? JSON.stringify(data, null, 2) : message);
   if (command === 'init') { const state = await initialize(root, values.objective); output(state, `✓ aihub initialisé dans ${root}`); return; }
   if (command === 'mcp') return startMcpServer(root);
@@ -94,4 +102,4 @@ async function main() {
   output(handoff, `✓ ${handoff.id} — relais de ${handoff.agent} enregistré.`);
 }
 
-main().catch((error: Error) => { console.error(`Erreur : ${['ERR_PARSE_ARGS_INVALID_OPTION_VALUE'].includes((error as NodeJS.ErrnoException).code ?? '') ? 'Valeur manquante ou ambiguë. ' : ''}${error.message}`); process.exitCode = 1; });
+main().catch((error: Error & { code?: string }) => { console.error(`Erreur : ${['ERR_PARSE_ARGS_INVALID_OPTION_VALUE'].includes(error.code ?? '') ? 'Valeur manquante ou ambiguë. ' : ''}${error.message}`); exit(1); });

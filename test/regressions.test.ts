@@ -93,3 +93,29 @@ test('concurrence : conserve dix ajouts dans un processus et dix processus CLI',
   const context = await readFile(join(root, 'AGENTS.md'), 'utf8');
   for (const task of state.tasks) assert.ok(context.includes(`${task.id} — ${task.title}`));
 });
+
+test('init : fichiers locaux ignorés par Git, règles conservées sans doublons', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'aihub-ignore-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await exec('git', ['init', root]);
+  await writeFile(join(root, '.gitignore'), 'custom/\n');
+  await initialize(root);
+  await initialize(root);
+  const ignore = await readFile(join(root, '.gitignore'), 'utf8');
+  assert.match(ignore, /^custom\//);
+  assert.equal(ignore.match(/\/AGENTS.md/g)?.length, 1);
+  for (const path of ['AGENTS.md', '.aihub/state.json', '.aihub.lock/']) {
+    await exec('git', ['check-ignore', path], { cwd: root });
+  }
+});
+
+test('init : préserve un AGENTS.md déjà suivi par Git', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'aihub-tracked-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await exec('git', ['init', root]);
+  await writeFile(join(root, 'AGENTS.md'), '# Instructions versionnées\n');
+  await exec('git', ['add', 'AGENTS.md'], { cwd: root });
+  await assert.rejects(initialize(root), /déjà suivis/);
+  assert.equal(await readFile(join(root, 'AGENTS.md'), 'utf8'), '# Instructions versionnées\n');
+  await assert.rejects(loadState(root), /non initialisé/);
+});
