@@ -33,7 +33,7 @@ export async function loadState(root: string): Promise<ProjectState> {
     if (parsed.version !== 1 || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.decisions) || !Array.isArray(parsed.handoffs)) throw new Error('format inconnu');
     return parsed;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new Error('Projet non initialisé. Lance `aihub init`.');
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new Error('Projet non initialisé. Lance `agentmemo init`.');
     throw new Error(`Impossible de lire ${path}: ${(error as Error).message}`);
   }
 }
@@ -56,7 +56,7 @@ async function ignoreLocalFiles(root: string): Promise<void> {
     // A project does not need Git installed or an initialized repository.
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !(error as { stderr?: string }).stderr?.includes('not a git repository')) throw error;
   }
-  if (tracked.trim()) throw new Error('Des fichiers aihub ou AGENTS.md sont déjà suivis par Git. Retire-les du suivi avant init pour garder la mémoire locale. Aucun fichier suivi ne sera modifié.');
+  if (tracked.trim()) throw new Error('Des fichiers agentmemo ou AGENTS.md sont déjà suivis par Git. Retire-les du suivi avant init pour garder la mémoire locale. Aucun fichier suivi ne sera modifié.');
   const path = join(root, '.gitignore');
   let current = '';
   try { current = await readFile(path, 'utf8'); }

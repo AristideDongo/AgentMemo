@@ -8,9 +8,9 @@ import { startMcpServer } from './mcp.ts';
 import { findProjectRoot, initialize, loadState } from './project.ts';
 import { addDecision, addHandoff, addTask, purge, setObjective, syncContext, updateTask } from './service.ts';
 
-const usage = `aihub — mémoire locale entre agents IA
+const usage = `agentmemo — mémoire locale entre agents IA
 
-Usage : aihub [--project chemin] <commande> [--json]
+Usage : agentmemo [--project chemin] <commande> [--json]
   interactive
   init [--objective "objectif"]
   status | context | sync
@@ -54,7 +54,7 @@ async function main() {
     handoff: ['agent', 'summary', 'next', 'blocker', 'file'], 'handoff list': [],
     mcp: [], purge: ['yes'],
   };
-  if (!(key in allowed)) throw new Error(`Commande inconnue : ${key}. Lance aihub help.`);
+  if (!(key in allowed)) throw new Error(`Commande inconnue : ${key}. Lance agentmemo help.`);
   const seen = new Set<string>();
   for (const token of tokens) {
     if (token.kind !== 'option') continue;
@@ -65,7 +65,7 @@ async function main() {
   }
   const takesText = ['objective', 'task add', 'decision add'].includes(key);
   const takesId = ['task start', 'task done', 'task reopen'].includes(key);
-  if ((!takesText && !takesId && rest.length) || (takesId && rest.length !== 1)) throw new Error(`Arguments invalides pour ${key}. Lance aihub help.`);
+  if ((!takesText && !takesId && rest.length) || (takesId && rest.length !== 1)) throw new Error(`Arguments invalides pour ${key}. Lance agentmemo help.`);
   const required = (value: string | undefined, name: string) => {
     if (!value?.trim()) throw new Error(`Valeur manquante : ${name}.`);
     return value;
@@ -80,10 +80,10 @@ async function main() {
   }
   if (command === 'init' && process.stdin.isTTY && process.stdout.isTTY && !values.json) return interactive(root, true, values.objective);
   const output = (data: unknown, message: string) => console.log(values.json ? JSON.stringify(data, null, 2) : message);
-  if (command === 'init') { const state = await initialize(root, values.objective); output(state, `✓ aihub initialisé dans ${root}`); return; }
+  if (command === 'init') { const state = await initialize(root, values.objective); output(state, `✓ agentmemo initialisé dans ${root}`); return; }
   if (command === 'mcp') return startMcpServer(root);
   if (command === 'purge') {
-    if (!values.yes) throw new Error('La purge supprime la mémoire locale. Confirme avec aihub purge --yes.');
+    if (!values.yes) throw new Error('La purge supprime la mémoire locale. Confirme avec agentmemo purge --yes.');
     await purge(root); output({ purged: true, root }, '✓ Mémoire locale supprimée.'); return;
   }
   if (command === 'sync') { const state = await syncContext(root); output(state, '✓ AGENTS.md régénéré.'); return; }

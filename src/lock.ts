@@ -10,7 +10,7 @@ export async function withProjectLock<T>(root: string, operation: () => Promise<
     try { await mkdir(path, { mode: 0o700 }); break; }
     catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      if (Date.now() >= deadline) throw new Error(`Projet verrouillé : ${path}. Si aucun aihub ne tourne, supprime ce dossier vide puis réessaie.`);
+      if (Date.now() >= deadline) throw new Error(`Projet verrouillé : ${path}. Si aucun agentmemo ne tourne, supprime ce dossier vide puis réessaie.`);
       await setTimeout(25);
     }
   }

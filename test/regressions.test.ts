@@ -14,7 +14,7 @@ const exec = promisify(execFile);
 const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
 
 test('CLI : accepte --doing avant le titre et rejette une valeur manquante', async (t) => {
-  const root = await mkdtemp(join(tmpdir(), 'aihub-cli-'));
+  const root = await mkdtemp(join(tmpdir(), 'agentmemo-cli-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await initialize(root);
   await exec(process.execPath, ['--experimental-strip-types', cli, 'task', 'add', '--doing', 'Vérifier le relais'], { cwd: root });
@@ -25,7 +25,7 @@ test('CLI : accepte --doing avant le titre et rejette une valeur manquante', asy
 });
 
 test('purge : supprime le contexte généré et préserve les instructions humaines', async (t) => {
-  const root = await mkdtemp(join(tmpdir(), 'aihub-purge-'));
+  const root = await mkdtemp(join(tmpdir(), 'agentmemo-purge-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await initialize(root);
   await writeFile(join(root, 'AGENTS.md'), '# Instructions humaines\n');
@@ -49,11 +49,11 @@ test('MCP : rejette les enveloppes invalides et ignore les notifications', async
 
 test('MCP : valide les arguments avant de lire ou modifier le projet', async () => {
   for (const [name, args] of [
-    ['aihub_task_add', {}], ['aihub_task_add', { title: 42 }],
-    ['aihub_task_add', { title: ' ' }],
-    ['aihub_task_update', { id: 'T1', status: 'invalid' }],
-    ['aihub_handoff', { agent: 'test', summary: 'test', files: [42] }],
-    ['aihub_context', []],
+    ['agentmemo_task_add', {}], ['agentmemo_task_add', { title: 42 }],
+    ['agentmemo_task_add', { title: ' ' }],
+    ['agentmemo_task_update', { id: 'T1', status: 'invalid' }],
+    ['agentmemo_handoff', { agent: 'test', summary: 'test', files: [42] }],
+    ['agentmemo_context', []],
   ]) {
     const response = await handleMcpRequest({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } });
     assert.equal((response as any).result.isError, true);
@@ -62,7 +62,7 @@ test('MCP : valide les arguments avant de lire ou modifier le projet', async () 
 });
 
 test('CLI : projet explicite, JSON, filtres, réouverture et synchronisation', async (t) => {
-  const root = await mkdtemp(join(tmpdir(), 'aihub-options-'));
+  const root = await mkdtemp(join(tmpdir(), 'agentmemo-options-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const run = async (...args: string[]) => (await exec(process.execPath, ['--experimental-strip-types', cli, '--project', root, ...args])).stdout;
   await run('init', '--objective', 'Objectif');
@@ -82,7 +82,7 @@ test('CLI : projet explicite, JSON, filtres, réouverture et synchronisation', a
 });
 
 test('concurrence : conserve dix ajouts dans un processus et dix processus CLI', async (t) => {
-  const root = await mkdtemp(join(tmpdir(), 'aihub-parallel-'));
+  const root = await mkdtemp(join(tmpdir(), 'agentmemo-parallel-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await Promise.all(Array.from({ length: 3 }, () => initialize(root)));
   await Promise.all(Array.from({ length: 10 }, (_, i) => addTask(root, `Service ${i}`)));
@@ -95,7 +95,7 @@ test('concurrence : conserve dix ajouts dans un processus et dix processus CLI',
 });
 
 test('init : fichiers locaux ignorés par Git, règles conservées sans doublons', async (t) => {
-  const root = await mkdtemp(join(tmpdir(), 'aihub-ignore-'));
+  const root = await mkdtemp(join(tmpdir(), 'agentmemo-ignore-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await exec('git', ['init', root]);
   await writeFile(join(root, '.gitignore'), 'custom/\n');
@@ -110,7 +110,7 @@ test('init : fichiers locaux ignorés par Git, règles conservées sans doublons
 });
 
 test('init : préserve un AGENTS.md déjà suivi par Git', async (t) => {
-  const root = await mkdtemp(join(tmpdir(), 'aihub-tracked-'));
+  const root = await mkdtemp(join(tmpdir(), 'agentmemo-tracked-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await exec('git', ['init', root]);
   await writeFile(join(root, 'AGENTS.md'), '# Instructions versionnées\n');
