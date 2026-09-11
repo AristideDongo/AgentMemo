@@ -3,3 +3,5 @@ dist/
 .aihub/
 *.log
 .DS_Store
+
+.aihub.lock/

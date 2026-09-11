@@ -60,3 +60,36 @@ test('MCP : valide les arguments avant de lire ou modifier le projet', async () 
     assert.doesNotMatch((response as any).result.content[0].text, /non initialisé/);
   }
 });
+
+test('CLI : projet explicite, JSON, filtres, réouverture et synchronisation', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'aihub-options-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const run = async (...args: string[]) => (await exec(process.execPath, ['--experimental-strip-types', cli, '--project', root, ...args])).stdout;
+  await run('init', '--objective', 'Objectif');
+  const task = JSON.parse(await run('task', 'add', '--json', '--', '--titre'));
+  assert.equal(task.title, '--titre');
+  await run('task', 'done', task.id);
+  assert.deepEqual(JSON.parse(await run('task', 'list', '--status', 'todo', '--json')), []);
+  await run('task', 'reopen', task.id);
+  assert.equal(JSON.parse(await run('task', 'list', '--status', 'todo', '--json')).length, 1);
+  await writeFile(join(root, 'AGENTS.md'), '# Humain\n');
+  await run('sync');
+  assert.match(await readFile(join(root, 'AGENTS.md'), 'utf8'), /--titre/);
+  await assert.rejects(run('status', '--doing'), /non autorisée/);
+  await assert.rejects(run('task', 'add', 'x', '--inconnue'), /Unknown option/);
+  await assert.rejects(run('task', 'add', 'x', '--doing', '--doing'), /répétée/);
+  assert.equal((await loadState(root)).tasks.length, 1);
+});
+
+test('concurrence : conserve dix ajouts dans un processus et dix processus CLI', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'aihub-parallel-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await Promise.all(Array.from({ length: 3 }, () => initialize(root)));
+  await Promise.all(Array.from({ length: 10 }, (_, i) => addTask(root, `Service ${i}`)));
+  await Promise.all(Array.from({ length: 10 }, (_, i) => exec(process.execPath, ['--experimental-strip-types', cli, '--project', root, 'task', 'add', `CLI ${i}`])));
+  const state = await loadState(root);
+  assert.equal(state.tasks.length, 20);
+  assert.equal(new Set(state.tasks.map(t => t.id)).size, 20);
+  const context = await readFile(join(root, 'AGENTS.md'), 'utf8');
+  for (const task of state.tasks) assert.ok(context.includes(`${task.id} — ${task.title}`));
+});
